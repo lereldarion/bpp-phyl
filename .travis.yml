@@ -1,0 +1,72 @@
+# Inspired from doctest env
+sudo: false
+language: cpp
+
+notifications:
+  email: false
+
+matrix:
+  include:
+    # OS X Clang
+    - env: COMPILER=clang++ CONFIG=osx-clang
+      os: osx
+      compiler: clang
+    # Ubuntu trusty target (g++)
+    - env: COMPILER=g++ CONFIG=trusty-gcc
+      os: linux
+      dist: trusty
+      compiler: gcc
+    # Ubuntu trusty target (clang)
+    - env: COMPILER=clang++ CONFIG=trusty-clang
+      os: linux
+      dist: trusty
+      compiler: clang
+    # Ubuntu precise, using ppa for GCC 6 and CMake
+    - env: COMPILER=g++-6 CONFIG=precise-ppa-gcc
+      os: linux
+      compiler: gcc
+      addons:
+        apt:
+          packages:
+            - cmake
+            - cmake-data
+            - g++-6
+            - libc6-dbg
+          sources:
+            - george-edison55-precise-backports # Cmake
+            - ubuntu-toolchain-r-test # Gcc versions
+
+before_install:
+  - wget "https://github.com/lereldarion/bpp-seq/releases/download/travis/${CONFIG}-travis-bpp-seq.tar.gz"
+  - wget "http://bitbucket.org/eigen/eigen/get/3.3.3.tar.bz2"
+
+install:
+  - export CXX="${COMPILER}"
+  - tar xf ${CONFIG}-travis-bpp-seq.tar.gz
+  - export ROOT_TRAVIS_DIR=$(pwd)
+  - tar xf 3.3.3.tar.bz2
+  - cd eigen-eigen-67e894c6cd8f
+  - mkdir -p build/ && cd build/
+  - cmake -DCMAKE_INSTALL_PREFIX=$ROOT_TRAVIS_DIR/local/ ..
+  - make install
+  - cd $ROOT_TRAVIS_DIR
+
+script:
+  - cmake -DCMAKE_INSTALL_PREFIX=local/ . && make -j2 && make test
+
+before_deploy:
+  - make install
+  - tar czf ${CONFIG}-travis-bpp-phyl.tar.gz local/
+
+deploy:
+  provider: releases
+  api_key:
+    secure: RmlzkCGL5eIXGfVvqH/Grk3ta02aWCYXDKEMGbpOlbSV8dBFfIW1/0u4Nr17wMX5GpX1Ze5cee3HPgfb1aMioA4UZLk/3s4t7ydeou1x56wUGkPHxl7O07lKCoA7AOCDQQM/M1hWdXftd67kmp28dh8QvV/3Krleb1lvfNoH04LV3sMKFFBrHdTzcQaiQUohE5Op6/fSK7C7AecEo+0ytv+AOP/JnJ4SJmo96fOIxEZiKoG/5Y1AzXbar/X8sb+Wr4ZXCJwTIEJVtvN0e6fj0XaISkcvuS859xPhfXF61NE7ek/3UmEpKCdSgqLKZfFzTR2VKFvpTgC7VgWdYfB10eRBTn9MTbg7AIWMmwLeWbYOxxHWSeCUbFl86aKbNPd+5DnTDgAH/pIfL1swf4JHWRp8pIX7y5onoAi03kMvmiUuq3iMgtCdURq6bVU3g/Ukt/UYmG94k22RdZDe3k8P1lto8/pKYZ+R8Jg9udu9ivL6eGYwBdHwsVnO1odzTHT03uc4RWD/Mz/+fhoVIVQFj5STJQdGgKF0/xm705181baBqZ+Ui9+NqElyeJCukVrGIIMYKMIVF57hD4rSts039gHBjjdEyqjSxJguIGq0CzVwSbCzb0umciDvlFCMUzaaskWwvnypJYT+ckkepOfU411j0m72AwddIPz+KB8UasM=
+  file: ${CONFIG}-travis-bpp-phyl.tar.gz
+  skip_cleanup: true
+  on:
+    repo: lereldarion/bpp-phyl
+    branch: fgindraud-with-travis
+    tags: true
+
+
